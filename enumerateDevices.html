@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+    <button onclick = "playStream(true, false);">Start audio stream</button>
+    <button onclick = "playStream(false, true);">Start video stream</button>
+    <button onclick = "playStream(true, true);">Start audio + video stream</button>
+    <button onclick = "stopStream();">Stop all streams</button>
+    <button onclick = "enumerateAndLog();">Enumerate devices and log result</button>
+
+    <div>
+        <span> Use Audio deviceId:</span> <input id = "audioId">
+        <span> Use Video deviceId:</span> <input id = "videoId">
+    </div>
+
+
+    <h1>
+        Results of navigator.mediaDevices.enumerateDevices(), auto updates on device change:
+    </h1>
+
+    <video id="vid" autoplay></video>
+
+    <div id="result">
+    </div>
+
+</body>
+
+<script>
+
+    let stream;
+
+    function stopStream() {
+
+        if (stream) {
+            console.log("stopping stream(s)");
+
+            stream.getAudioTracks().forEach(function(track) {
+                track.stop();
+            });
+
+            stream.getVideoTracks().forEach(function(track) {
+                track.stop();
+            });
+        }
+
+    }
+
+    async function playStream(audio, video) {
+        stopStream();
+        const constraints = { audio, video };
+        if (document.getElementById("videoId").value) {
+            constraints.video = {
+                deviceId: document.getElementById("videoId").value
+            };
+        }
+
+        if (document.getElementById("audioId").value) {
+            constraints.audio = {
+                deviceId: document.getElementById("audioId").value
+            };
+        }
+        stream = await navigator.mediaDevices.getUserMedia( constraints );
+        document.getElementById("vid").src = URL.createObjectURL(stream);
+        console.log("Started stream with the following constraints:", constraints);
+    }
+
+    async function enumerateAndLog() {
+
+        const time = new Date();
+
+        const list = await navigator.mediaDevices.enumerateDevices();
+        const table = document.createElement("table");
+
+        const sums = {
+            audioinput: 0,
+            videoinput: 0,
+            audiooutput: 0
+        }
+
+        list.forEach(item => {
+            sums[item.kind]++
+        });
+
+        const timeRow = document.createElement("tr");
+        timeRow.innerHTML = "TIME OF ENUMERATION: "+time.getHours()+":"+time.getMinutes()+":"+time.getSeconds();
+        table.appendChild(timeRow);
+        const sumsRow = document.createElement("tr");
+        sumsRow.innerHTML = "Audio Inputs: "+sums.audioinput+ "   Video Inputs: "+sums.videoinput+ "   Audio Outputs: "+sums.audiooutput;
+        table.appendChild(sumsRow);
+
+        const header = document.createElement("tr");
+        for (let property in list[0]) {
+            if (property !== "getCapabilities" && property !== "toJSON") {
+                const cell = document.createElement("td");
+                cell.innerHTML = property;
+                header.appendChild(cell);
+            }
+        }
+        table.appendChild(header);
+
+        list.forEach(item => {
+            const row = document.createElement("tr");
+            for (let property in item) {
+                if (property !== "getCapabilities" && property !== "toJSON") {
+                    const cell = document.createElement("td");
+                    cell.innerHTML = item[property];
+                    row.appendChild(cell);
+                }
+
+            }
+            table.appendChild(row);
+        });
+
+        document.getElementById("result").appendChild(table);
+    }
+
+    enumerateAndLog();
+
+    navigator.mediaDevices.ondevicechange = () => {
+        console.log("Media device(s) change detected");
+        enumerateAndLog();
+    }
+
+</script>
+
+
+<style>
+    
+    #result {
+        display: flex;
+        flex-direction: column-reverse;
+    }
+
+    table {
+        margin: 20px;
+    }
+
+    tr:nth-of-type(2), td:nth-of-type(2) {
+        font-weight: bold;
+    }
+
+    td {
+        border: 1px solid black;
+    }
+
+    video {
+        height: 100px;
+        width: 100px;
+        border: 1px solid black;
+        margin-left: 20px;
+    }
+
+</style>
+
+
+</html>
